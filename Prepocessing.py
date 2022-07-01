@@ -9,46 +9,6 @@ from nltk.corpus import stopwords
 nltk.download('stopwords')
 
 
-def clean_tweet(tweet: str) -> str:  # functions in own script
-    # https://www.kaggle.com/code/parulpandey/eda-and-preprocessing-for-bert/notebook
-    # https://gist.github.com/bicachu/09cc71bb4b0e3711eaf1556b12fa7ad7
-
-    # Look into what we still need, maybe think about writing multiple functions
-    # Still need to delete emojis and smiles
-    # https://github.com/Deffro/text-preprocessing-techniques
-    # https://github.com/Deffro/text-preprocessing-techniques/blob/master/techniques.py
-    tweet = re.sub(r'https?://[^ ]+', '', tweet)  # remove https links
-    tweet = re.sub(r'@[^ ]+', '', tweet)  # remove usernames (tweeted at)
-    tweet = re.sub(r'(RT\s@[^ ]+)', '', tweet)  # remove usernames (re-tweet)
-    tweet = re.sub(r'#[^ ]+', '', tweet)  # remove hashtags
-    tweet = re.sub(r'VIDEO:', '', tweet)  # remove 'VIDEO:' from start of tweet
-    tweet = re.sub(r'AUDIO:', '', tweet)  # remove 'AUDIO:' from start of tweet
-
-    tweet = tweet.lower()  # tweet to lower
-    tweet = re.sub('[%s]' % re.escape(string.punctuation), '', tweet)  # remove punctuation
-    tweet = re.sub('\n', '', tweet)
-    tweet = re.sub(r'([A-Za-z])\1{2,}', r'\1', tweet)  # character normalization --> todaaaaay = today
-    tweet = re.sub('\w*\d\w*', '', tweet)  # remove words containing numbers
-    tweet = re.sub('([0-9]+)', '', tweet)  # remove numbers
-    tweet = re.sub('\s+', ' ', tweet)  # remove double spacing
-
-    return tweet
-
-
-def nlp_preprocessing(tweets: list) -> list: # functions in own script
-    stopword = stopwords.words('english')
-    tweets_cleaned = []
-
-    for tweet in tweets:
-        tweet = clean_tweet(tweet)
-        tweet = nltk.word_tokenize(tweet)
-        tweet = [token for token in tweet if token not in stopword]
-        tweet = ' '.join(tweet)
-        tweets_cleaned.append(tweet)
-
-    return tweets_cleaned
-
-
 # Do not forget to change to place where the data is stored
 with open('C:/Users/Gina/Downloads/Semester 2/WS/Bots Assignment/Project Implementation/Twibot-20/test.json') as file:
     json_data = json.loads(file.read())
@@ -77,3 +37,68 @@ for obj in json_data:
 
 df = pd.DataFrame(list(zip(ID, location, label, tweets)), columns=['ID', 'location', 'label', 'tweets'])
 print(df)
+
+##PREPROCESSING CODE (leave it in a new .py document?)
+
+punctuation = '!"$%&\'()*+,-./:;<=>?[\\]^_`{|}~•@'
+
+def rmv_links(tweet):
+    """Takes a string and removes http, bitly links from it"""
+    tweet = re.sub(r'http\S+', '', tweet)   # remove http links
+    tweet = re.sub(r'bit.ly/\S+', '', tweet)  # remove bitly links
+    tweet = tweet.strip('[link]')   # remove [links]
+    tweet = re.sub(r'pic.twitter\S+','', tweet)
+    return tweet
+
+def rmv_audiovisual(tweet):
+    """Takes a string and removes videos and audio tags or labels"""
+    tweet = re.sub('VIDEO:', '', tweet)  # remove 'VIDEO:' from start of tweet
+    tweet = re.sub('AUDIO:', '', tweet)  # remove 'AUDIO:' from start of tweet
+    return tweet
+
+def lemm_function(token):
+    """Returns lemma of a token"""
+    return WordNetLemmatizer().lemmatize(token, pos='v')
+
+def tok(tweet):
+    """Returns tokenized representation of words in lemma and removes stopwords"""
+    result = []
+    for token in gensim.utils.simple_preprocess(tweet):
+        if token not in gensim.parsing.preprocessing.STOPWORDS \
+                and len(token) > 2:  # drops words with less than 3 characters
+            result.append(lemm_function(token))
+    return result
+
+def nlp_preprocess(tweet):
+    """NLP function to clean tweets, stripping noisy characters, removes user mentions
+     and tokenization and lemmatization"""
+
+    tweet = tweet.lower()  # tweet to lower case
+    tweet = rmv_links(tweet)
+    tweet = rmv_audiovisual(tweet)
+    tweet = re.sub('(@[A-Za-z0-9_]+)', ' ', tweet) #removes mention to other users
+    tweet = re.sub('[' + punctuation + ']+', ' ', tweet)  # strip punctuation
+    tweet = re.sub('\n', '', tweet)
+    tweet = re.sub('\s+', ' ', tweet)  # remove double spacing
+    tweet = re.sub('([0-9]+)', '', tweet)  # remove numbers
+    tweet = re.sub(r'([A-   Za-z])\1{2,}', r'\1', tweet)  # character normalization --> todaaaaay = today
+    tweet = re.sub('\w*\d\w*', '', tweet)  # remove words containing numbers
+    tweet_token_list = tok(tweet)  # apply lemmatization and tokenization
+    tweet = ' '.join(tweet_token_list)
+    return tweet
+
+def tokenize_tweets(df):
+    """Function that reads and return cleaned and preprocessed tweets dataframe."""
+
+    start_time = time.time() #to monitor time the function runs
+
+    df['tokens'] = df.tweet.apply(nlp_preprocess)
+    num_tweets = len(df)
+    print('Complete. Number of Tweets that have been cleaned and tokenized : {}'.format(num_tweets))
+
+    #main()
+    print("--- %s seconds ---" % (time.time() - start_time))
+    return df
+
+df = tokenize_tweets(df)
+df
