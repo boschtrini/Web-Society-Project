@@ -30,4 +30,4 @@ for obj in json_data:
 
 df = pd.DataFrame(list(zip(ID, location, label, tweets)), columns=['ID', 'location', 'label', 'tweet']
 df1 = df.explode('tweet')
-df.head()
+df1.head()
