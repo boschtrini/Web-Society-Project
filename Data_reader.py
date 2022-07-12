@@ -28,6 +28,6 @@ for obj in json_data:
         label.append("NaN")
 
 
-df = pd.DataFrame(list(zip(ID, location, label, tweets)), columns=['ID', 'location', 'label', 'tweet']
+df = pd.DataFrame(list(zip(ID, location, label, tweets)), columns=['ID', 'location', 'label', 'tweet'])
 df1 = df.explode('tweet')
 df1.head()
